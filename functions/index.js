@@ -1,7 +1,15 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-admin.initializeApp();
+// Need for local
+let serviceAccount = require("/Users/dk/Documents/GitHub/classed-social-firebase-server/keys/serviceAccountKey.json");
+admin.initializeApp(
+  // Need for local
+  {
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://social-573b5.firebaseio.com"
+  }
+);
 
 const firebaseConfig = {
   apiKey: "AIzaSyDWJ-dGgHVrhZ_XZy-PjogFDYT1PDZElZI",
@@ -60,6 +68,17 @@ app.post("/scream", (request, response) => {
     });
 });
 
+const isEmail = email => {
+  const regEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  if (email.match(regEx)) return true;
+  else return false;
+};
+
+const isEmpty = string => {
+  if (string.trim() === "") return true;
+  else return false;
+};
+
 // Signup route
 app.post("/signup", (request, response) => {
   const newUser = {
@@ -68,6 +87,21 @@ app.post("/signup", (request, response) => {
     confirmPassword: request.body.confirmPassword,
     handle: request.body.handle
   };
+
+  let errors = {};
+
+  if (isEmpty(newUser.email)) {
+    errors.email = "Email must not be empty";
+  } else if (!isEmail(newUser.email)) {
+    errors.email = "Must be a valid email address";
+  }
+
+  if (isEmpty(newUser.password)) errors.password = "Must not be empty";
+  if (newUser.password !== newUser.confirmPassword)
+    errors.confirmPassword = "Passwords must match";
+  if (isEmpty(newUser.handle)) errors.handle = "Must not be empty";
+
+  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
 
   // Todo: validate data
 
@@ -109,6 +143,38 @@ app.post("/signup", (request, response) => {
       } else {
         return response.status(500).json({ error: err.code });
       }
+    });
+});
+
+app.post("/login", (request, response) => {
+  const user = {
+    email: request.body.email,
+    password: request.body.password
+  };
+
+  let errors = {};
+
+  if (isEmpty(user.email)) errors.email = "Must not be empty";
+  if (isEmpty(user.password)) errors.password = "Must not be empty";
+
+  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
+
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(user.email, user.password)
+    .then(data => {
+      return data.user.getIdToken();
+    })
+    .then(token => {
+      return response.json({ token });
+    })
+    .catch(err => {
+      console.error(err);
+      if (err.code === "auth/wrong-password") {
+        return response
+          .status(403)
+          .json({ general: "Wrong credentials, please try again" });
+      } else return response.status(500).json({ error: err.code });
     });
 });
 

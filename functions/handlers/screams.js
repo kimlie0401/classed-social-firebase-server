@@ -228,3 +228,22 @@ exports.deleteScream = (req, res) => {
       return res.status(500).json({ error: err.code });
     });
 };
+
+exports.editScream = (req, res) => {
+  if (req.body.body.trim() === "") {
+    return res.status(400).json({ body: "Body must not be empty" });
+  }
+  const editedScream = {
+    body: req.body.body
+  };
+  const document = db.doc(`/screams/${req.params.screamId}`);
+  document
+    .update(editedScream)
+    .then(() => {
+      return res.json({ message: "Scream editing successfully" });
+    })
+    .catch(err => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
+    });
+};

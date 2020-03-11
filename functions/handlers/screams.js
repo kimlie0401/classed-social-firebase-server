@@ -240,7 +240,11 @@ exports.editScream = (req, res) => {
   document
     .update(editedScream)
     .then(() => {
-      return res.json({ message: "Scream editing successfully" });
+      const result = {
+        ...editedScream,
+        screamId: req.params.screamId
+      };
+      return res.json(result);
     })
     .catch(err => {
       console.error(err);
